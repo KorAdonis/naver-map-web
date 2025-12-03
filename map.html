@@ -27,20 +27,19 @@
 <script>
     // 지도 생성
     var map = new naver.maps.Map('map', {
-        center: new naver.maps.LatLng(37.5665, 126.9780), // 초기 위치
+        center: new naver.maps.LatLng(37.5665, 126.9780), // 초기 위치 (서울 시청 근처)
         zoom: 16
     });
 
-    // 좌표 → 주소 요청 함수
-    function requestAddress() {
-        var center = map.getCenter();          // LatLng
+    // 카메라 이동이 끝났을 때 호출
+    naver.maps.Event.addListener(map, 'idle', function () {
+        var center = map.getCenter();
         var lat = center.lat();
         var lng = center.lng();
 
         naver.maps.Service.reverseGeocode(
             {
-                // docs 예제처럼 orders 안 건드리고 기본값 사용
-                coords: center
+                coords: center   // 기본 옵션 사용
             },
             function (status, response) {
                 if (status !== naver.maps.Service.Status.OK) {
@@ -50,27 +49,61 @@
                     return;
                 }
 
-                var result = response.v2;          // 컨테이너
-                var addrObj = result.address || {}; // { roadAddress, jibunAddress }
+                var v2 = response.v2;
+                var addrText = "";
 
-                var addr =
-                    addrObj.roadAddress ||
-                    addrObj.jibunAddress ||
-                    "";
+                // 1) 도로명 주소가 있으면 그거 우선
+                if (v2.address && v2.address.roadAddress) {
+                    addrText = v2.address.roadAddress;
+                }
+                // 2) 도로명이 없으면: region + land.number1/2로 지번 상세 조합
+                else if (v2.results && v2.results.length > 0) {
+                    var r0 = v2.results[0];
+                    var region = r0.region || {};
+                    var land   = r0.land   || {};
 
-                // Android WebView 로 전달
-                if (window.Android && Android.onAddressChanged) {
-                    Android.onAddressChanged(lat, lng, addr);
+                    var a1 = region.area1 && region.area1.name ? region.area1.name : "";
+                    var a2 = region.area2 && region.area2.name ? region.area2.name : "";
+                    var a3 = region.area3 && region.area3.name ? region.area3.name : "";
+                    var a4 = region.area4 && region.area4.name ? region.area4.name : "";
+
+                    var dongName = land.name || "";      // 동/리 이름
+                    var num1 = land.number1 || "";       // 본번
+                    var num2 = land.number2 || "";       // 부번
+
+                    var numPart = "";
+                    if (num1) {
+                        numPart = num1;
+                        if (num2) {
+                            numPart += "-" + num2;
+                        }
+                    }
+
+                    // 서울특별시 종로구 사직동 1-23 이런 형식으로 조합
+                    var lastPart = dongName;
+                    if (numPart) {
+                        lastPart += " " + numPart;
+                    }
+
+                    addrText = [a1, a2, a3, lastPart]
+                        .filter(function (s) { return s && s.trim().length > 0; })
+                        .join(" ");
+                }
+                // 3) 그래도 없으면: 지번 주소 문자열이라도 사용
+                else if (v2.address && v2.address.jibunAddress) {
+                    addrText = v2.address.jibunAddress;
                 }
 
-                // 디버깅용
-                console.log("reverseGeocode:", lat, lng, addrObj, addr);
+                // Android WebView로 전달
+                if (window.Android && Android.onAddressChanged) {
+                    Android.onAddressChanged(lat, lng, addrText);
+                }
+
+                // 디버깅용 콘솔 출력
+                console.log("reverseGeocode addr =", addrText, v2);
             }
         );
-    }
-
-    // 카메라 멈출 때마다 호출
-    naver.maps.Event.addListener(map, 'idle', requestAddress);
+    });
 </script>
 
 </body>

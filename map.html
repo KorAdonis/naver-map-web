@@ -4,78 +4,72 @@
     <meta charset="utf-8">
     <title>Naver Web Map</title>
     <style>
-        html, body { width:100%; height:100%; margin:0; padding:0; }
-        #map { width:100%; height:100%; position:relative; }
-        #centerPin {
-            width: 32px;
-            height: 32px;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -100%);
-            z-index: 1000;
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+            position: relative;
         }
     </style>
 
-    <!-- 네이버 지도 JS SDK -->
-   <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=daqpt6kqp6&submodules=geocoder"></script>
-
-
+    <!-- 네이버 지도 JS SDK (Geocoder 서브모듈 포함) -->
+    <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=daqpt6kqp6&submodules=geocoder"></script>
 </head>
 <body>
 
 <div id="map"></div>
 
-
 <script>
-   <script>
-  var map = new naver.maps.Map('map', {
-      center: new naver.maps.LatLng(37.5665, 126.9780),
-      zoom: 16
-  });
+    // 지도 생성
+    var map = new naver.maps.Map('map', {
+        center: new naver.maps.LatLng(37.5665, 126.9780),
+        zoom: 16
+    });
 
-  naver.maps.Event.addListener(map, 'idle', function () {
-      var center = map.getCenter();
-      var lat = center.lat();
-      var lng = center.lng();
+    // 카메라가 멈췄을 때(지도를 움직이고 손 뗐을 때)
+    naver.maps.Event.addListener(map, 'idle', function () {
+        var center = map.getCenter();
+        var lat = center.lat();
+        var lng = center.lng();
 
-      // 좌표 → 주소 (도로명 우선)
-      naver.maps.Service.reverseGeocode(
-          {
-              coords: center,
-              orders: [
-                  naver.maps.Service.OrderType.ROAD_ADDR, // 도로명
-                  naver.maps.Service.OrderType.ADDR       // 지번
-              ].join(',')
-          },
-          function (status, response) {
-              if (status !== naver.maps.Service.Status.OK) {
-                  if (window.Android && Android.onAddressChanged) {
-                      Android.onAddressChanged(lat, lng, "");
-                  }
-                  return;
-              }
+        // 좌표 -> 주소 (도로명 우선)
+        naver.maps.Service.reverseGeocode(
+            {
+                coords: center,
+                orders: [
+                    naver.maps.Service.OrderType.ROAD_ADDR, // 도로명
+                    naver.maps.Service.OrderType.ADDR       // 지번
+                ].join(',')
+            },
+            function (status, response) {
+                if (status !== naver.maps.Service.Status.OK) {
+                    if (window.Android && Android.onAddressChanged) {
+                        Android.onAddressChanged(lat, lng, "");
+                    }
+                    return;
+                }
 
-              var result = response.v2;
-              var addr = "";
+                var result = response.v2;
+                var addr = "";
 
-              if (result.addresses && result.addresses.length > 0) {
-                  var item = result.addresses[0];
-                  // 도로명 주소가 있으면 사용하고, 없으면 지번 주소 사용
-                  addr = item.roadAddress || item.jibunAddress || "";
-              }
+                if (result.addresses && result.addresses.length > 0) {
+                    var item = result.addresses[0];
+                    // 도로명 주소 있으면 사용, 없으면 지번 주소 사용
+                    addr = item.roadAddress || item.jibunAddress || "";
+                }
 
-              if (window.Android && Android.onAddressChanged) {
-                  Android.onAddressChanged(lat, lng, addr);
-              }
-          }
-      );
-  });
-</script>
-
+                if (window.Android && Android.onAddressChanged) {
+                    Android.onAddressChanged(lat, lng, addr);
+                }
+            }
+        );
+    });
 </script>
 
 </body>
-
 </html>
-

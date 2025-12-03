@@ -4,11 +4,20 @@
     <meta charset="utf-8">
     <title>Naver Web Map</title>
     <style>
-        html, body { width:100%; height:100%; margin:0; padding:0; }
-        #map { width:100%; height:100%; position:relative; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
     </style>
 
-    <!-- 네이버 지도 JS + 지오코더 -->
+    <!-- 네이버 지도 JS SDK + Geocoder 서브모듈 -->
     <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=daqpt6kqp6&submodules=geocoder"></script>
 </head>
 <body>
@@ -16,55 +25,52 @@
 <div id="map"></div>
 
 <script>
-    // 기본 지도
+    // 지도 생성
     var map = new naver.maps.Map('map', {
-        center: new naver.maps.LatLng(37.5665, 126.9780),
+        center: new naver.maps.LatLng(37.5665, 126.9780), // 초기 위치
         zoom: 16
     });
 
-    // 카메라 이동이 끝날 때마다 호출
-    naver.maps.Event.addListener(map, 'idle', function () {
-        var center = map.getCenter();
+    // 좌표 → 주소 요청 함수
+    function requestAddress() {
+        var center = map.getCenter();          // LatLng
         var lat = center.lat();
         var lng = center.lng();
 
-        // 좌표 → 주소 (도로명 > 지번 순)
-        naver.maps.Service.reverseGeocode({
-            coords: center,
-            orders: [
-                naver.maps.Service.OrderType.ROAD_ADDR,
-                naver.maps.Service.OrderType.ADDR
-            ].join(',')
-        }, function (status, response) {
-            if (status !== naver.maps.Service.Status.OK) {
-                // 실패해도 위도/경도는 넘겨 두자
-                if (window.Android && Android.onAddressChanged) {
-                    Android.onAddressChanged(lat, lng, "");
+        naver.maps.Service.reverseGeocode(
+            {
+                // docs 예제처럼 orders 안 건드리고 기본값 사용
+                coords: center
+            },
+            function (status, response) {
+                if (status !== naver.maps.Service.Status.OK) {
+                    if (window.Android && Android.onAddressChanged) {
+                        Android.onAddressChanged(lat, lng, "");
+                    }
+                    return;
                 }
-                return;
-            }
 
-            var result = response.v2;
-            var addrText = "";
+                var result = response.v2;          // 컨테이너
+                var addrObj = result.address || {}; // { roadAddress, jibunAddress }
 
-            // v2.address 에 도로명/지번 정리된 게 들어있음
-            if (result.address) {
-                addrText = result.address.roadAddress ||
-                           result.address.jibunAddress ||
-                           "";
-            } else if (result.results && result.results.length > 0) {
-                // 혹시 모르니 results[0]에서도 한 번 더 시도
-                var r0 = result.results[0];
-                addrText = (r0.roadAddress && r0.roadAddress.address) ||
-                           (r0.land && r0.land.name) ||
-                           "";
-            }
+                var addr =
+                    addrObj.roadAddress ||
+                    addrObj.jibunAddress ||
+                    "";
 
-            if (window.Android && Android.onAddressChanged) {
-                Android.onAddressChanged(lat, lng, addrText);
+                // Android WebView 로 전달
+                if (window.Android && Android.onAddressChanged) {
+                    Android.onAddressChanged(lat, lng, addr);
+                }
+
+                // 디버깅용
+                console.log("reverseGeocode:", lat, lng, addrObj, addr);
             }
-        });
-    });
+        );
+    }
+
+    // 카메라 멈출 때마다 호출
+    naver.maps.Event.addListener(map, 'idle', requestAddress);
 </script>
 
 </body>

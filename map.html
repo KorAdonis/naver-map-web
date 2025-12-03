@@ -18,8 +18,8 @@
     </style>
 
     <!-- 네이버 지도 JS SDK -->
-    <script type="text/javascript"
-            src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=daqpt6kqp6"></script>
+   <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=daqpt6kqp6&submodules=geocoder"></script>
+
 
 </head>
 <body>
@@ -30,23 +30,53 @@
      src="https://ssl.pstatic.net/static/maps/m/static/202306151752/img/pin_spot.png">
 
 <script>
-    var map = new naver.maps.Map('map', {
-        center: new naver.maps.LatLng(37.5665, 126.9780),
-        zoom: 16
-    });
+   <script>
+  var map = new naver.maps.Map('map', {
+      center: new naver.maps.LatLng(37.5665, 126.9780),
+      zoom: 16
+  });
 
-    // 카메라 이동 종료 이벤트
-    naver.maps.Event.addListener(map, 'idle', function () {
-        var center = map.getCenter();
-        var lat = center.lat();
-        var lng = center.lng();
+  naver.maps.Event.addListener(map, 'idle', function () {
+      var center = map.getCenter();
+      var lat = center.lat();
+      var lng = center.lng();
 
-        // Android로 좌표 전달
-        if (window.Android && Android.onCameraChanged) {
-            Android.onCameraChanged(lat, lng);
-        }
-    });
+      // 좌표 → 주소 (도로명 우선)
+      naver.maps.Service.reverseGeocode(
+          {
+              coords: center,
+              orders: [
+                  naver.maps.Service.OrderType.ROAD_ADDR, // 도로명
+                  naver.maps.Service.OrderType.ADDR       // 지번
+              ].join(',')
+          },
+          function (status, response) {
+              if (status !== naver.maps.Service.Status.OK) {
+                  if (window.Android && Android.onAddressChanged) {
+                      Android.onAddressChanged(lat, lng, "");
+                  }
+                  return;
+              }
+
+              var result = response.v2;
+              var addr = "";
+
+              if (result.addresses && result.addresses.length > 0) {
+                  var item = result.addresses[0];
+                  // 도로명 주소가 있으면 사용하고, 없으면 지번 주소 사용
+                  addr = item.roadAddress || item.jibunAddress || "";
+              }
+
+              if (window.Android && Android.onAddressChanged) {
+                  Android.onAddressChanged(lat, lng, addr);
+              }
+          }
+      );
+  });
+</script>
+
 </script>
 
 </body>
+
 </html>

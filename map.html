@@ -31,7 +31,7 @@
         zoom: 16
     });
 
-    // 카메라가 멈췄을 때(지도를 움직이고 손 뗐을 때)
+    // 카메라 이동이 끝났을 때
     naver.maps.Event.addListener(map, 'idle', function () {
         var center = map.getCenter();
         var lat = center.lat();
@@ -59,7 +59,6 @@
 
                 if (result.addresses && result.addresses.length > 0) {
                     var item = result.addresses[0];
-                    // 도로명 주소 있으면 사용, 없으면 지번 주소 사용
                     addr = item.roadAddress || item.jibunAddress || "";
                 }
 

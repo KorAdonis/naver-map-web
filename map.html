@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Naver Web Map</title>
+    <style>
+        html, body { width:100%; height:100%; margin:0; padding:0; }
+        #map { width:100%; height:100%; position:relative; }
+        #centerPin {
+            width: 32px;
+            height: 32px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -100%);
+            z-index: 1000;
+        }
+    </style>
+
+    <!-- 네이버 지도 JS SDK -->
+    <script type="text/javascript"
+            src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=daqpt6kqp6"></script>
+
+</head>
+<body>
+
+<div id="map"></div>
+
+<img id="centerPin"
+     src="https://ssl.pstatic.net/static/maps/m/static/202306151752/img/pin_spot.png">
+
+<script>
+    var map = new naver.maps.Map('map', {
+        center: new naver.maps.LatLng(37.5665, 126.9780),
+        zoom: 16
+    });
+
+    // 카메라 이동 종료 이벤트
+    naver.maps.Event.addListener(map, 'idle', function () {
+        var center = map.getCenter();
+        var lat = center.lat();
+        var lng = center.lng();
+
+        // Android로 좌표 전달
+        if (window.Android && Android.onCameraChanged) {
+            Android.onCameraChanged(lat, lng);
+        }
+    });
+</script>
+
+</body>
+</html>
